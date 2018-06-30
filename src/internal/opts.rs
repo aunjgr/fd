@@ -1,6 +1,6 @@
 use crate::exec::CommandTemplate;
 use crate::internal::{
-    filter::{SizeFilter, TimeFilter},
+    filter::{SizeFilter, TimeFilter, UserFilter},
     FileTypes,
 };
 use lscolors::LsColors;
@@ -75,6 +75,9 @@ pub struct FdOptions {
 
     /// Constraints on last modification time of files
     pub time_constraints: Vec<TimeFilter>,
+
+    /// User/group ownership constraint
+    pub user_constraint: Option<UserFilter>,
 
     /// Whether or not to display filesystem errors
     pub show_filesystem_errors: bool,

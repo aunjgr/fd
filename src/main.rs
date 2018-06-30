@@ -30,7 +30,7 @@ use regex::bytes::{RegexBuilder, RegexSetBuilder};
 
 use crate::exec::CommandTemplate;
 use crate::internal::{
-    filter::{SizeFilter, TimeFilter},
+    filter::{SizeFilter, TimeFilter, UserFilter},
     opts::FdOptions,
     pattern_has_uppercase_char, transform_args_with_exec, FileTypes,
 };
@@ -198,6 +198,14 @@ fn main() {
         }
     }
 
+    let user_constraint = matches.value_of("user").map(|s| {
+        if let Some(own) = UserFilter::from_string(s) {
+            own
+        } else {
+            print_error_and_exit!("Error: {} is not a valid user/group constraint", s);
+        }
+    });
+
     let config = FdOptions {
         case_sensitive,
         search_full_path: matches.is_present("full-path"),
@@ -278,6 +286,7 @@ fn main() {
             .unwrap_or_else(|| vec![]),
         size_constraints: size_limits,
         time_constraints,
+        user_constraint,
         show_filesystem_errors: matches.is_present("show-errors"),
         path_separator,
     };

@@ -284,6 +284,15 @@ pub fn build_app() -> App<'static, 'static> {
                 .number_of_values(1),
         );
 
+    #[cfg(unix)]
+    let app = app.arg(
+        arg("user")
+            .hidden(true)
+            .long("user")
+            .short("U")
+            .takes_value(true),
+    );
+
     // Make `--one-file-system` available only on Unix and Windows platforms, as per the
     // restrictions on the corresponding option in the `ignore` crate.
     // Provide aliases `mount` and `xdev` for people coming from `find`.
@@ -471,6 +480,12 @@ fn usage() -> HashMap<&'static str, Help> {
            results will be shown with respect to the given base path. Note that relative paths \
            which are passed to fd via the positional <path> argument or the '--search-path' option \
            will also be resolved relative to this directory.");
+
+    #[cfg(unix)]
+    doc!(h, "user"
+        , "Filter by user and/or group. Format: [(username|UID)][:(groupname|GID)]"
+        , "Filter files by their user and/or group:\n   \
+                Format: [(username|UID)][:(groupname|GID)]");
 
     if cfg!(any(unix, windows)) {
         doc!(h, "one-file-system"
