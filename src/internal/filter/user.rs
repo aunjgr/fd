@@ -46,16 +46,7 @@ impl UserFilter {
     pub fn matches(&self, md: &fs::Metadata) -> bool {
         use std::os::unix::fs::MetadataExt;
 
-        let uid_ok = match self.uid {
-            Check::Equal(u) => u == md.uid(),
-            _ => true,
-        };
-        let gid_ok = match self.gid {
-            Check::Equal(g) => g == md.gid(),
-            _ => true,
-        };
-
-        uid_ok && gid_ok
+        self.uid.check(md.uid()) && self.gid.check(md.gid())
     }
 }
 
@@ -64,6 +55,16 @@ enum Check<T> {
     Equal(T),
     NotEq(T),
     Ignore,
+}
+
+impl<T: PartialEq> Check<T> {
+    fn check(&self, v: T) -> bool {
+        match *self {
+            Check::Equal(ref x) => v == *x,
+            Check::NotEq(ref x) => v != *x,
+            Check::Ignore => true,
+        }
+    }
 }
 
 impl<T> Check<T> {
