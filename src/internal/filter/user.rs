@@ -15,19 +15,21 @@ enum Check<T> {
 
 impl UserFilter {
     pub fn from_string(input: &str) -> Option<Self> {
-        let colon = input.find(':');
-        let (fst, snd) = match colon {
-            Some(p) => {
-                let (a, b) = input.split_at(p);
-                (a, Some(&b[1..]))
-            }
-            _ => (input, None),
+        let mut it = input.split(':');
+        let (fst, snd) = (it.next(), it.next());
+
+        let (fst, equal_uid) = match fst {
+            Some(s) if s.starts_with("!") => (Some(&s[1..]), false),
+            s => (s, true),
+        };
+        let (snd, equal_gid) = match snd {
+            Some(s) if s.starts_with("!") => (Some(&s[1..]), false),
+            s => (s, true),
         };
 
-        let uid = match (fst, colon) {
-            ("", None) => return None, // can't have only empty uid
-            ("", Some(_)) => None,     // empty uid is ok when we have colon
-            (s, _) => s
+        let uid = match fst {
+            Some("") | None => None,
+            Some(s) => s
                 .parse()
                 .ok()
                 .or_else(|| users::get_user_by_name(s).map(|user| user.uid()))
@@ -47,12 +49,14 @@ impl UserFilter {
         };
 
         use self::Check::*;
-        let uid = match uid {
-            Some(u) => Equal(u),
+        let uid = match (uid, equal_uid) {
+            (Some(u), true) => Equal(u),
+            (Some(u), false) => NotEq(u),
             _ => Ignore,
         };
-        let gid = match gid {
-            Some(g) => Equal(g),
+        let gid = match (gid, equal_gid) {
+            (Some(g), true) => Equal(g),
+            (Some(g), false) => NotEq(g),
             _ => Ignore,
         };
 
@@ -103,6 +107,10 @@ mod user_parsing {
         gid_only:   ":8"    => Some(UserFilter { uid: Ignore,   gid: Equal(8)  }),
         colon_only: ":"     => None,
         trailing:   "5:"    => Some(UserFilter { uid: Equal(5), gid: Ignore    }),
+
+        uid_negate: "!5"    => Some(UserFilter { uid: NotEq(5), gid: Ignore    }),
+        both_negate:"!4:!3" => Some(UserFilter { uid: NotEq(4), gid: NotEq(3)  }),
+        uid_not_gid:"6:!8"  => Some(UserFilter { uid: Equal(6), gid: NotEq(8)  }),
     }
     //FIXME: maybe find a way to test parsing usernames ?
 }
