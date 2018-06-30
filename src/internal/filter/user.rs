@@ -6,61 +6,41 @@ pub struct UserFilter {
     gid: Check<u32>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-enum Check<T> {
-    Equal(T),
-    NotEq(T),
-    Ignore,
-}
-
 impl UserFilter {
     pub fn from_string(input: &str) -> Option<Self> {
         let mut it = input.split(':');
         let (fst, snd) = (it.next(), it.next());
 
-        let (fst, equal_uid) = match fst {
-            Some(s) if s.starts_with("!") => (Some(&s[1..]), false),
-            s => (s, true),
+        use self::Check::*;
+        let fst = match fst {
+            Some("") | None => Ignore,
+            Some(s) if s.starts_with("!") => NotEq(&s[1..]),
+            Some(s) => Equal(s),
         };
-        let (snd, equal_gid) = match snd {
-            Some(s) if s.starts_with("!") => (Some(&s[1..]), false),
-            s => (s, true),
+        let snd = match snd {
+            Some("") | None => Ignore,
+            Some(s) if s.starts_with("!") => NotEq(&s[1..]),
+            Some(s) => Equal(s),
         };
 
-        let uid = match fst {
-            Some("") | None => None,
-            Some(s) => s
-                .parse()
+        let uid = fst.and_then(|s| {
+            s.parse()
                 .ok()
                 .or_else(|| users::get_user_by_name(s).map(|user| user.uid()))
                 .or_else(|| {
                     print_error_and_exit!("Error: {} is not a recognized user name", s);
-                }),
-        };
-        let gid = match snd {
-            Some("") | None => None,
-            Some(s) => s
-                .parse()
+                })
+        });
+        let gid = snd.and_then(|s| {
+            s.parse()
                 .ok()
                 .or_else(|| users::get_group_by_name(s).map(|group| group.gid()))
                 .or_else(|| {
                     print_error_and_exit!("Error: {} is not a recognized group name", s);
-                }),
-        };
+                })
+        });
 
-        use self::Check::*;
-        let uid = match (uid, equal_uid) {
-            (Some(u), true) => Equal(u),
-            (Some(u), false) => NotEq(u),
-            _ => Ignore,
-        };
-        let gid = match (gid, equal_gid) {
-            (Some(g), true) => Equal(g),
-            (Some(g), false) => NotEq(g),
-            _ => Ignore,
-        };
-
-        if let (Ignore, Ignore) = (uid, gid) {
+        if let (Check::Ignore, Check::Ignore) = (uid, gid) {
             None
         } else {
             Some(Self { uid, gid })
@@ -80,6 +60,29 @@ impl UserFilter {
         };
 
         uid_ok && gid_ok
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum Check<T> {
+    Equal(T),
+    NotEq(T),
+    Ignore,
+}
+
+impl<T> Check<T> {
+    fn and_then<U, F: FnOnce(T) -> Option<U>>(self, f: F) -> Check<U> {
+        match self {
+            Check::Equal(x) => match f(x) {
+                Some(r) => Check::Equal(r),
+                None => Check::Ignore,
+            },
+            Check::NotEq(x) => match f(x) {
+                Some(r) => Check::NotEq(r),
+                None => Check::Ignore,
+            },
+            Check::Ignore => Check::Ignore,
+        }
     }
 }
 
