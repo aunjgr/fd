@@ -11,19 +11,15 @@ impl UserFilter {
         let mut it = input.split(':');
         let (fst, snd) = (it.next(), it.next());
 
-        use self::Check::*;
-        let fst = match fst {
-            Some("") | None => Ignore,
-            Some(s) if s.starts_with("!") => NotEq(&s[1..]),
-            Some(s) => Equal(s),
-        };
-        let snd = match snd {
-            Some("") | None => Ignore,
-            Some(s) if s.starts_with("!") => NotEq(&s[1..]),
-            Some(s) => Equal(s),
-        };
+        fn parse_negation(o: Option<&str>) -> Check<&str> {
+            match o {
+                Some("") | None => Check::Ignore,
+                Some(s) if s.starts_with('!') => Check::NotEq(&s[1..]),
+                Some(s) => Check::Equal(s),
+            }
+        }
 
-        let uid = fst.and_then(|s| {
+        let uid = parse_negation(fst).and_then(|s| {
             s.parse()
                 .ok()
                 .or_else(|| users::get_user_by_name(s).map(|user| user.uid()))
@@ -31,7 +27,7 @@ impl UserFilter {
                     print_error_and_exit!("Error: {} is not a recognized user name", s);
                 })
         });
-        let gid = snd.and_then(|s| {
+        let gid = parse_negation(snd).and_then(|s| {
             s.parse()
                 .ok()
                 .or_else(|| users::get_group_by_name(s).map(|group| group.gid()))
