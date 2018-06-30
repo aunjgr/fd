@@ -2,8 +2,15 @@ use std::fs;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct UserFilter {
-    uid: Option<u32>,
-    gid: Option<u32>,
+    uid: Check<u32>,
+    gid: Check<u32>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum Check<T> {
+    Equal(T),
+    NotEq(T),
+    Ignore,
 }
 
 impl UserFilter {
@@ -39,7 +46,17 @@ impl UserFilter {
                 }),
         };
 
-        if uid.is_none() && gid.is_none() {
+        use self::Check::*;
+        let uid = match uid {
+            Some(u) => Equal(u),
+            _ => Ignore,
+        };
+        let gid = match gid {
+            Some(g) => Equal(g),
+            _ => Ignore,
+        };
+
+        if let (Ignore, Ignore) = (uid, gid) {
             None
         } else {
             Some(Self { uid, gid })
@@ -49,8 +66,14 @@ impl UserFilter {
     pub fn matches(&self, md: &fs::Metadata) -> bool {
         use std::os::unix::fs::MetadataExt;
 
-        let uid_ok = self.uid.map(|u| u == md.uid()).unwrap_or(true);
-        let gid_ok = self.gid.map(|g| g == md.gid()).unwrap_or(true);
+        let uid_ok = match self.uid {
+            Check::Equal(u) => u == md.uid(),
+            _ => true,
+        };
+        let gid_ok = match self.gid {
+            Check::Equal(g) => g == md.gid(),
+            _ => true,
+        };
 
         uid_ok && gid_ok
     }
@@ -72,13 +95,14 @@ mod user_parsing {
         };
     }
 
+    use super::Check::*;
     owner_tests! {
         empty:      ""      => None,
-        uid_only:   "5"     => Some(UserFilter { uid: Some(5), gid: None   }),
-        uid_gid:    "9:3"   => Some(UserFilter { uid: Some(9), gid: Some(3)}),
-        gid_only:   ":8"    => Some(UserFilter { uid: None,    gid: Some(8)}),
+        uid_only:   "5"     => Some(UserFilter { uid: Equal(5), gid: Ignore    }),
+        uid_gid:    "9:3"   => Some(UserFilter { uid: Equal(9), gid: Equal(3)  }),
+        gid_only:   ":8"    => Some(UserFilter { uid: Ignore,   gid: Equal(8)  }),
         colon_only: ":"     => None,
-        trailing:   "5:"    => Some(UserFilter { uid: Some(5), gid: None   }),
+        trailing:   "5:"    => Some(UserFilter { uid: Equal(5), gid: Ignore    }),
     }
     //FIXME: maybe find a way to test parsing usernames ?
 }
