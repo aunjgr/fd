@@ -14,10 +14,6 @@ use regex_syntax::ParserBuilder;
 
 pub use self::file_types::FileTypes;
 
-mod file_types;
-pub mod filter;
-pub mod opts;
-
 macro_rules! print_error {
     ($($arg:tt)*) => (eprintln!("[fd error]: {}", format!($($arg)*)))
 }
@@ -28,6 +24,10 @@ macro_rules! print_error_and_exit {
         ::std::process::exit(1);
     };
 }
+
+mod file_types;
+pub mod opts;
+pub mod filter;
 
 #[cfg(any(unix, target_os = "redox"))]
 pub fn osstr_to_bytes(input: &OsStr) -> Cow<[u8]> {

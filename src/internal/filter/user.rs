@@ -1,3 +1,5 @@
+use std::fs;
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct UserFilter {
     uid: Option<u32>,
@@ -18,11 +20,23 @@ impl UserFilter {
         let uid = match (fst, colon) {
             ("", None) => return None, // can't have only empty uid
             ("", Some(_)) => None,     // empty uid is ok when we have colon
-            (s, _) => Some(s.parse().ok()?),
+            (s, _) => s
+                .parse()
+                .ok()
+                .or_else(|| users::get_user_by_name(s).map(|user| user.uid()))
+                .or_else(|| {
+                    print_error_and_exit!("Error: {} is not a recognized user name", s);
+                }),
         };
         let gid = match snd {
             Some("") | None => None,
-            Some(s) => Some(s.parse().ok()?),
+            Some(s) => s
+                .parse()
+                .ok()
+                .or_else(|| users::get_group_by_name(s).map(|group| group.gid()))
+                .or_else(|| {
+                    print_error_and_exit!("Error: {} is not a recognized group name", s);
+                }),
         };
 
         if uid.is_none() && gid.is_none() {
@@ -30,6 +44,15 @@ impl UserFilter {
         } else {
             Some(Self { uid, gid })
         }
+    }
+
+    pub fn matches(&self, md: &fs::Metadata) -> bool {
+        use std::os::unix::fs::MetadataExt;
+
+        let uid_ok = self.uid.map(|u| u == md.uid()).unwrap_or(true);
+        let gid_ok = self.gid.map(|g| g == md.gid()).unwrap_or(true);
+
+        uid_ok && gid_ok
     }
 }
 
@@ -57,5 +80,5 @@ mod user_parsing {
         colon_only: ":"     => None,
         trailing:   "5:"    => Some(UserFilter { uid: Some(5), gid: None   }),
     }
+    //FIXME: maybe find a way to test parsing usernames ?
 }
-
