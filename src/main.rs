@@ -30,7 +30,7 @@ use regex::bytes::{RegexBuilder, RegexSetBuilder};
 
 use crate::exec::CommandTemplate;
 use crate::internal::{
-    filter::{SizeFilter, TimeFilter, UserFilter},
+    filter::*,
     opts::FdOptions,
     pattern_has_uppercase_char, transform_args_with_exec, FileTypes,
 };
@@ -198,13 +198,18 @@ fn main() {
         }
     }
 
-    let user_constraint = matches.value_of("user").map(|s| {
-        if let Some(own) = UserFilter::from_string(s) {
-            own
-        } else {
-            print_error_and_exit!("Error: {} is not a valid user/group constraint", s);
-        }
-    });
+    #[cfg(unix)]
+    let owners: Vec<OwnerFilter> = matches
+        .values_of("owner")
+        .map_or_else(|| vec![], |v| {
+            v.map(|o| {
+                if let Some(f) = OwnerFilter::from_string(o) {
+                    return f;
+                }
+                print_error_and_exit!("'{}' is not a valid owner. See 'fd --help'.", o);
+            })
+            .collect()
+        });
 
     let config = FdOptions {
         case_sensitive,
@@ -286,7 +291,10 @@ fn main() {
             .unwrap_or_else(|| vec![]),
         size_constraints: size_limits,
         time_constraints,
-        user_constraint,
+
+        #[cfg(unix)]
+        owner_filters: owners,
+
         show_filesystem_errors: matches.is_present("show-errors"),
         path_separator,
     };

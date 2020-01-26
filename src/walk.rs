@@ -373,19 +373,20 @@ fn spawn_senders(
                 }
             }
 
-            // Filter out unwanted file types.
+            let entry_metadata = entry.metadata();
 
-            let entry_metadata = entry.metadata().ok();
+            // Filter out unwanted file types.
 
             if let Some(ref file_types) = config.file_types {
                 if let Some(ref entry_type) = entry.file_type() {
                     if (!file_types.files && entry_type.is_file())
                         || (!file_types.directories && entry_type.is_dir())
                         || (!file_types.symlinks && entry_type.is_symlink())
-                        || (file_types.executables_only && !entry_metadata
-                            .as_ref()
-                            .map(|m| fshelper::is_executable(&m))
-                            .unwrap_or(false))
+                        || (file_types.executables_only
+                            && !entry_metadata
+                                .as_ref()
+                                .map(|m| fshelper::is_executable(&m))
+                                .unwrap_or(false))
                         || (file_types.empty_only && !fshelper::is_empty(&entry))
                         || !(entry_type.is_file() || entry_type.is_dir() || entry_type.is_symlink())
                     {
@@ -396,35 +397,19 @@ fn spawn_senders(
                 }
             }
 
-            #[cfg(unix)]
-            {
-                if let Some(ref user_constraint) = config.user_constraint {
-                    if let Some(ref metadata) = entry_metadata {
-                        if !user_constraint.matches(&metadata) {
-                            return ignore::WalkState::Continue;
-                        }
-                    } else {
-                        return ignore::WalkState::Continue;
-                    }
-                }
-            }
-
             // Filter out unwanted sizes if it is a file and we have been given size constraints.
             if !config.size_constraints.is_empty() {
+                let mut matched = false;
                 if entry_path.is_file() {
-                    if let Some(metadata) = entry_metadata {
+                    if let Ok(ref metadata) = entry_metadata {
                         let file_size = metadata.len();
-                        if config
+                        matched = config
                             .size_constraints
                             .iter()
-                            .any(|sc| !sc.is_within(file_size))
-                        {
-                            return ignore::WalkState::Continue;
-                        }
-                    } else {
-                        return ignore::WalkState::Continue;
+                            .all(|sc| sc.is_within(file_size));
                     }
-                } else {
+                }
+                if !matched {
                     return ignore::WalkState::Continue;
                 }
             }
@@ -432,7 +417,7 @@ fn spawn_senders(
             // Filter out unwanted modification times
             if !config.time_constraints.is_empty() {
                 let mut matched = false;
-                if let Ok(metadata) = entry_path.metadata() {
+                if let Ok(ref metadata) = entry_metadata {
                     if let Ok(modified) = metadata.modified() {
                         matched = config
                             .time_constraints
@@ -442,6 +427,24 @@ fn spawn_senders(
                 }
                 if !matched {
                     return ignore::WalkState::Continue;
+                }
+            }
+
+            #[cfg(unix)]
+            {
+                if !config.owner_filters.is_empty() {
+                    let mut matched = false;
+                    if let Ok(ref metadata) = entry_metadata {
+                        let uid = fshelper::get_uid(metadata);
+                        let gid = fshelper::get_gid(metadata);
+                        matched = config
+                            .owner_filters
+                            .iter()
+                            .any(|f| f.matches(uid, gid));
+                    }
+                    if !matched {
+                        return ignore::WalkState::Continue;
+                    }
                 }
             }
 

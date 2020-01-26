@@ -285,13 +285,17 @@ pub fn build_app() -> App<'static, 'static> {
         );
 
     #[cfg(unix)]
-    let app = app.arg(
-        arg("user")
-            .long("user")
-            .short("U")
-            .takes_value(true)
-            .value_name("user:group"),
-    );
+    {
+        app = app
+            .arg(
+                arg("owner")
+                    .long("owner")
+                    .takes_value(true)
+                    .value_name("[user][:group]")
+                    .multiple(true)
+                    .number_of_values(1),
+            )
+    }
 
     // Make `--one-file-system` available only on Unix and Windows platforms, as per the
     // restrictions on the corresponding option in the `ignore` crate.
@@ -482,11 +486,13 @@ fn usage() -> HashMap<&'static str, Help> {
            will also be resolved relative to this directory.");
 
     #[cfg(unix)]
-    doc!(h, "user"
-        , "Filter by user and/or group"
-        , "Filter files by their user and/or group.\n\
-           Format: (user|uid):(group|gid). Either side is optional.\n\
-           Precede either uid or gid with a ! to exclude files instead.");
+    {
+        doc!(h, "owner"
+            , "Filter by user and/or group"
+            , "Filter files by their user and/or group.\n\
+               Format: (user|uid):(group|gid). Either side is optional.\n\
+               Precede either uid or gid with a ! to exclude files instead.");
+    }
 
     if cfg!(any(unix, windows)) {
         doc!(h, "one-file-system"
