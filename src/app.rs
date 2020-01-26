@@ -295,6 +295,15 @@ pub fn build_app() -> App<'static, 'static> {
                     .multiple(true)
                     .number_of_values(1),
             )
+            .arg(
+                arg("permission")
+                    .long("perm")
+                    .takes_value(true)
+                    .value_name("mode")
+                    .allow_hyphen_values(true)
+                    .multiple(true)
+                    .number_of_values(1),
+            );
     }
 
     // Make `--one-file-system` available only on Unix and Windows platforms, as per the
@@ -492,6 +501,14 @@ fn usage() -> HashMap<&'static str, Help> {
             , "Filter files by their user and/or group.\n\
                Format: (user|uid):(group|gid). Either side is optional.\n\
                Precede either uid or gid with a ! to exclude files instead.");
+        doc!(h, "permission"
+            , "Filter by permissions"
+            , "Filter files by their permission bits. Format: !?[=-/]?[\\.0-7]{3,4}\n    \
+                   =mode: Match if file's permission bits are exactly as mode.\n    \
+                   -mode: Match if all of permission bits are set for file.\n    \
+                   /mode: Match if any of permission bits are set for file.\n\
+               The mode is given as 3 or 4 octal digits. And . can be used as wildcard placeholder. \
+               Precede with a ! to exclude files instead.");
     }
 
     if cfg!(any(unix, windows)) {

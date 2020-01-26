@@ -446,6 +446,20 @@ fn spawn_senders(
                         return ignore::WalkState::Continue;
                     }
                 }
+
+                if !config.permission_filters.is_empty() {
+                    let mut matched = false;
+                    if let Ok(ref metadata) = entry_metadata {
+                        let perm = fshelper::get_permission(metadata);
+                        matched = config
+                            .permission_filters
+                            .iter()
+                            .any(|f| f.matches(perm));
+                    }
+                    if !matched {
+                        return ignore::WalkState::Continue;
+                    }
+                }
             }
 
             let send_result = tx_thread.send(WorkerResult::Entry(entry_path.to_owned()));

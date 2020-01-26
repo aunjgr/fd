@@ -80,6 +80,10 @@ pub struct FdOptions {
     /// User/group ownership filters
     pub owner_filters: Vec<OwnerFilter>,
 
+    #[cfg(unix)]
+    /// Permission mode filters
+    pub permission_filters: Vec<PermissionFilter>,
+
     /// Whether or not to display filesystem errors
     pub show_filesystem_errors: bool,
 

@@ -211,6 +211,19 @@ fn main() {
             .collect()
         });
 
+    #[cfg(unix)]
+    let perm_modes: Vec<PermissionFilter> = matches
+        .values_of("permission")
+        .map_or_else(|| vec![], |v| {
+            v.map(|p| {
+                if let Some(f) = PermissionFilter::from_string(p) {
+                    return f;
+                }
+                print_error_and_exit!("'{}' is not a valid permission mode. See 'fd --help'.", p);
+            })
+            .collect()
+        });
+
     let config = FdOptions {
         case_sensitive,
         search_full_path: matches.is_present("full-path"),
@@ -294,6 +307,8 @@ fn main() {
 
         #[cfg(unix)]
         owner_filters: owners,
+        #[cfg(unix)]
+        permission_filters: perm_modes,
 
         show_filesystem_errors: matches.is_present("show-errors"),
         path_separator,

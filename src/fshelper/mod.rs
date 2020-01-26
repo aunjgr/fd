@@ -65,6 +65,11 @@ pub fn get_gid(md: &fs::Metadata) -> u32 {
     md.gid()
 }
 
+#[cfg(unix)]
+pub fn get_permission(md: &fs::Metadata) -> u32 {
+    md.mode()
+}
+
 pub fn is_empty(entry: &walk::DirEntry) -> bool {
     if let Some(file_type) = entry.file_type() {
         if file_type.is_dir() {
