@@ -9,7 +9,7 @@
 use std::env::current_dir;
 use std::fs;
 use std::io;
-#[cfg(any(unix, target_os = "redox"))]
+#[cfg(unix)]
 use std::os::unix::fs::{MetadataExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 
@@ -45,7 +45,7 @@ pub fn is_dir(path: &Path) -> bool {
     path.is_dir() && (path.file_name().is_some() || path.canonicalize().is_ok())
 }
 
-#[cfg(any(unix, target_os = "redox"))]
+#[cfg(unix)]
 pub fn is_executable(md: &fs::Metadata) -> bool {
     md.permissions().mode() & 0o111 != 0
 }

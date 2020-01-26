@@ -29,7 +29,7 @@ mod file_types;
 pub mod opts;
 pub mod filter;
 
-#[cfg(any(unix, target_os = "redox"))]
+#[cfg(unix)]
 pub fn osstr_to_bytes(input: &OsStr) -> Cow<[u8]> {
     use std::os::unix::ffi::OsStrExt;
     Cow::Borrowed(input.as_bytes())
