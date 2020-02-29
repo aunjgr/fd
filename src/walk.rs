@@ -401,7 +401,7 @@ fn spawn_senders(
             if !config.size_constraints.is_empty() {
                 let mut matched = false;
                 if entry_path.is_file() {
-                    if let Ok(ref metadata) = entry_metadata {
+                    if let Some(ref metadata) = entry_metadata {
                         let file_size = metadata.len();
                         matched = config
                             .size_constraints
@@ -417,7 +417,7 @@ fn spawn_senders(
             // Filter out unwanted modification times
             if !config.time_constraints.is_empty() {
                 let mut matched = false;
-                if let Ok(ref metadata) = entry_metadata {
+                if let Some(ref metadata) = entry_metadata {
                     if let Ok(modified) = metadata.modified() {
                         matched = config
                             .time_constraints
@@ -434,7 +434,7 @@ fn spawn_senders(
             {
                 if !config.owner_filters.is_empty() {
                     let mut matched = false;
-                    if let Ok(ref metadata) = entry_metadata {
+                    if let Some(ref metadata) = entry_metadata {
                         let uid = fshelper::get_uid(metadata);
                         let gid = fshelper::get_gid(metadata);
                         matched = config
@@ -449,7 +449,7 @@ fn spawn_senders(
 
                 if !config.permission_filters.is_empty() {
                     let mut matched = false;
-                    if let Ok(ref metadata) = entry_metadata {
+                    if let Some(ref metadata) = entry_metadata {
                         let perm = fshelper::get_permission(metadata);
                         matched = config
                             .permission_filters
